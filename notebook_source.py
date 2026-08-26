@@ -1906,13 +1906,18 @@ print(f"Threshold-violation stops at rho=0.9: {_tv_rho9} of {_n_rho9} ({_tv_rho9
       f"(paper: 221 of 480, 46.0%)")
 
 # %% [markdown]
-# **Figure 8** (three panels, `figure7_monte_carlo` / `fig7_monte_carlo.pdf` in
-# the paper, `fig:monte-carlo`).
+# **Figure 8** (four panels, `figure7_monte_carlo` / `fig7_monte_carlo.pdf` in
+# the paper, `fig:monte-carlo`). Panels (a)-(c) are built here from the
+# baseline $p=0.5$ sweep (`monte_carlo_df`); panel (d) compares this baseline
+# against the degeneracy-avoiding $p=0.75$ guideline validated in Section 18
+# below, so the actual figure (with all four panels) is only produced and
+# saved at the end of that section, once both sweeps exist.
 
 # %%
-def make_monte_carlo_figure(df):
+def make_monte_carlo_figure(df, fix_dfs=None):
     colors = {3: BLUE, 5: ORANGE, 8: AQUA, 12: MAGENTA}
-    fig, axes = plt.subplots(1, 3, figsize=(11.5, 3.1))
+    n_panels = 4 if fix_dfs is not None else 3
+    fig, axes = plt.subplots(1, n_panels, figsize=(11.5 * n_panels / 3, 3.1))
 
     # Panel (a): T vs N, one line per K (median, shaded IQR), rho pooled
     ax = axes[0]
@@ -1958,12 +1963,33 @@ def make_monte_carlo_figure(df):
     ax.set_title("(c) Selectivity vs. criterion correlation", fontsize=8, loc="left")
     ax.legend(frameon=False, fontsize=6.5, loc="upper right")
 
+    # Panel (d): degenerate-mode rate at rho=0, p=0.50 vs p=0.75, one bar pair per K
+    if fix_dfs is not None:
+        ax = axes[3]
+        Ks = sorted(df["K"].unique())
+        x = np.arange(len(Ks))
+        width = 0.35
+        bar_colors = {"0.50": "#9b9b9b", "0.75": AQUA}
+        for i, (label, fdf) in enumerate(fix_dfs.items()):
+            rates = [100 * fdf[(fdf["K"] == K) & (fdf["rho"] == 0.0)]["degenerate"].mean()
+                     for K in Ks]
+            offset = (i - 0.5) * width
+            bars = ax.bar(x + offset, rates, width, color=bar_colors.get(label, None),
+                          label=f"$p={label}$", edgecolor="white", linewidth=0.5)
+            ax.bar_label(bars, fmt="%.1f", fontsize=5.5, padding=1)
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"$K={K}$" for K in Ks])
+        ax.set_ylabel("Degenerate rate (%) at $\\rho=0$")
+        ax.set_title("(d) Fixing the degenerate mode", fontsize=8, loc="left")
+        ax.legend(frameon=False, fontsize=6.5, loc="upper left")
+        ax.set_ylim(0, max(100 * df_p050[df_p050["rho"] == 0.0]
+                            .groupby("K")["degenerate"].mean().max() * 1.25, 10))
+
     fig.tight_layout()
     return fig
 
-fig = make_monte_carlo_figure(monte_carlo_df)
-save_fig(fig, "figure7_monte_carlo")
-print("Saved figure7_monte_carlo.pdf/.png (paper figure fig7_monte_carlo.pdf)")
+print("(figure7_monte_carlo is generated and saved at the end of Section 18 below,")
+print(" once the p=0.75 comparison sweep needed for panel (d) is available)")
 
 # %% [markdown]
 # ## 18. Section 5.8 — Validating the degeneracy-avoiding retention ratio
@@ -2024,3 +2050,16 @@ print("\nL-sensitivity at p=0.75 (paper cites L=1 -> 0.1% vs L=2 -> 0.8%):")
 for L in [1, 2, 3]:
     df = _run_fix_sweep(p=0.75, L=L)
     print(f"  L={L}: true-degenerate={df['degenerate'].mean():.1%}")
+
+# %% [markdown]
+# **Figure 8**, now with panel (d) added (`figure7_monte_carlo` /
+# `fig7_monte_carlo.pdf` in the paper, `fig:monte-carlo`): panels (a)-(c) as
+# before, from the baseline $p=0.5$ sweep; panel (d) shows the
+# degenerate-mode rate at $\rho=0$, one bar pair per $K$, comparing $p=0.50$
+# against the recommended $p=0.75$ -- the visual counterpart of
+# Table~\ref{tab:degenerate-fix}.
+
+# %%
+fig = make_monte_carlo_figure(monte_carlo_df, fix_dfs={"0.50": df_p050, "0.75": df_p075})
+save_fig(fig, "figure7_monte_carlo")
+print("Saved figure7_monte_carlo.pdf/.png (paper figure fig7_monte_carlo.pdf, now 4 panels)")
