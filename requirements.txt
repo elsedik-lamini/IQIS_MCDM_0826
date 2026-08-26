@@ -1,11 +1,14 @@
-# Tested with: numpy 2.4.4, pandas 3.0.2, matplotlib 3.10.9, scipy 1.17.1, pymcdm 1.4.0
-# (Python >= 3.10). Reasonably recent releases of each package should also work;
-# the notebook's own first cell installs these same packages via %pip install,
-# so this file is provided as a convenience for command-line / CI use, not a
-# strict requirement for running the notebook interactively.
+# Tested with: numpy 2.4.4, pandas 3.0.2, matplotlib 3.10.9, scipy 1.17.1, pymcdm 1.4.0,
+# pyDecision 5.1.1, scikit-posthocs 0.16.0 (Python >= 3.10). Reasonably recent
+# releases of each package should also work; the notebook's own first cell
+# installs these same packages via %pip install, so this file is provided as a
+# convenience for command-line / CI use, not a strict requirement for running
+# the notebook interactively.
 numpy>=1.24
 pandas>=2.0
 matplotlib>=3.7
 scipy>=1.10
 pymcdm>=1.1
+pyDecision>=5.0
+scikit-posthocs>=0.9
 jupyter>=1.0
