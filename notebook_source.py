@@ -21,9 +21,10 @@
 # | `data/qs_university_rankings_2026.csv` | [QS World University Rankings 2026 (Kaggle)](https://www.kaggle.com/datasets/dhrubangtalukdar/qs-world-university-rankings-2026-top-1500) |
 # | `data/nba_players_1996_2022.csv` | [NBA Players dataset, 1996–2022 (Kaggle)](https://www.kaggle.com/datasets/justinas/nba-players-data) |
 #
-# The two small benchmark matrices (Bhangale et al., 2004; Karsak et al., 2012) need
-# no download — they are transcribed directly from the original publications in
-# Section 6 below, byte-for-byte identical to the tables printed in the paper.
+# The three small benchmark matrices (Bhangale et al., 2004; Braglia & Petroni,
+# 1999; Karsak et al., 2012) need no download — they are transcribed directly
+# from the original publications in Section 6 below, byte-for-byte identical to
+# the tables printed in the paper.
 #
 # **Notebook map** (which section produces which paper table/figure):
 #
@@ -34,18 +35,19 @@
 # | 3. Core method (`iqis_select`) | — (definitions only) |
 # | 4. Metrics | — (definitions only) |
 # | 5. Baseline methods | — (definitions only) |
-# | 6. Datasets | Table `tab:bhangale`, Table `tab:karsak`, loads QS/NBA CSVs |
+# | 6. Datasets | Table `tab:bhangale`, Table `tab:karsak`, Table `tab:karsak27`, loads QS/NBA CSVs |
 # | 7. Figure — method schematic | **Figure 1** in the paper (Section 3.4) |
 # | 8. Figure — WS-coefficient saturation | **Figure 2** in the paper (Section 3.7) |
 # | 9. Figure — retention-ratio sensitivity | **Figure 3** in the paper (opening of Section 5) |
 # | 10. Section 5.1 — Bhangale (2004) | Tables `tab:literature-validation-{composition,p50,comparison}` |
-# | 11. Section 5.2 — Karsak (2012) | Tables `tab:illustrative-{composition,comparison,ranks}` |
-# | 12. Section 5.3 — ELECTRE TRI-B sorting comparison | Table `tab:electre-tri` |
-# | 13. Section 5.4 — Rank-reversal test | Table `tab:rank-reversal` |
-# | 14. Section 5.5 — QS World University Rankings | Tables `tab:qs-{composition,mechanism,comparison}` |
-# | 15. Section 5.6 — NBA player performance | Tables `tab:nba-{composition,comparison,complexity}`, **Figures 4 and 5** |
-# | 16. Section 5.7 — Cross-dataset synthesis | Tables `tab:cross-dataset-{ranks,wsm}`, **Figure 6**, **Figure 7** (Nemenyi CD) |
-# | 17. Section 5.8 — Synthetic robustness study (Monte Carlo) | **Figure 8** (`figure7_monte_carlo` in the paper's figure files) |
+# | 11. Section 5.2 — Braglia \& Petroni (1999) | Tables `tab:illustrative-{composition,comparison,ranks}` |
+# | 11bis. Section 5.3 — Karsak et al. (2012), full 27-robot dataset | Tables `tab:karsak27-{composition,p60,comparison,ranks}` |
+# | 12. Section 5.4 — ELECTRE TRI-B sorting comparison | Table `tab:electre-tri` |
+# | 13. Section 5.5 — Rank-reversal test | Table `tab:rank-reversal` |
+# | 14. Section 5.6 — QS World University Rankings | Tables `tab:qs-{composition,mechanism,comparison}` |
+# | 15. Section 5.7 — NBA player performance | Tables `tab:nba-{composition,comparison,complexity}`, **Figures 4 and 5** |
+# | 16. Section 5.8 — Cross-dataset synthesis | Tables `tab:cross-dataset-{ranks,wsm}`, **Figure 6**, **Figure 7** (Nemenyi CD) |
+# | 17. Section 5.9 — Synthetic robustness study (Monte Carlo) | **Figure 8** (`figure7_monte_carlo` in the paper's figure files) |
 #
 # Figure numbers above are the numbers the figures receive *in the compiled
 # paper*, which follow reading order rather than the order this notebook computes
@@ -63,7 +65,7 @@
 #   Scenario A's Spearman $\rho\approx0.07$; this notebook computes
 #   $\rho\approx0.09$ with the same seed and procedure.
 # - Section 11 (Table `tab:illustrative-ranks`): Borda has two exact rank-sum
-#   ties on the Karsak matrix (R2/R12 and R3/R11); this notebook reports them as
+#   ties on the Braglia \& Petroni matrix (R2/R12 and R3/R11); this notebook reports them as
 #   fractional (average) ranks rather than reproducing the specific whole-number
 #   tie-break printed in the article.
 # - Section 14 (Table `tab:qs-mechanism`): the article names "MIT, Stanford, and
@@ -478,7 +480,7 @@ def wsm_score(X, directions, weights=None):
     """Weighted Sum Model (equal weights), via pymcdm. Higher = better. NOTE:
     pymcdm's sum-normalization requires strictly positive input on every
     criterion -- raises ValueError if any column has negative values (this is
-    exactly why WSM is omitted from the NBA comparison in Section 5.6, since
+    exactly why WSM is omitted from the NBA comparison in Section 5.7, since
     net rating is frequently negative)."""
     X = np.asarray(X, dtype=float)
     types = _types_from_directions(directions)
@@ -502,7 +504,7 @@ try:
     from pyDecision.algorithm import electre_iii, electre_tri_b
 except ImportError:
     raise ImportError(
-        "pyDecision is required for ELECTRE III / ELECTRE TRI-B (Section 5.3 "
+        "pyDecision is required for ELECTRE III / ELECTRE TRI-B (Section 5.4 "
         "of the paper). Install it with `pip install pyDecision`."
     )
 
@@ -526,7 +528,7 @@ def electre_iii_score(X, directions, q_frac=0.10, p_frac=0.30, v_frac=0.70):
     single comparable ranking, this wrapper takes the median of each
     alternative's rank in the two distillations -- a comparability device, not
     a claim that ELECTRE III itself resolves genuine incomparabilities --
-    exactly as reported in Section 5.3 of the paper."""
+    exactly as reported in Section 5.4 of the paper."""
     X = np.asarray(X, dtype=float)
     N, K = X.shape
     signs = np.array([1.0 if d == "max" else -1.0 for d in directions])
@@ -554,7 +556,7 @@ def electre_tri_b_good_set(X, directions, p, q_frac=0.10, p_frac=0.30, v_frac=0.
     boundary profile placed at the (1-p) quantile of each criterion (in
     benefit orientation) -- the same retention ratio p already used for IQIS
     on this dataset, so the two methods' 'good' sets are compared at matched
-    nominal selectivity (Section 5.3 of the paper). Returns a boolean mask,
+    nominal selectivity (Section 5.4 of the paper). Returns a boolean mask,
     True = assigned to the top category."""
     X = np.asarray(X, dtype=float)
     N, K = X.shape
@@ -591,7 +593,7 @@ def agreement_table(result: IQISResult, X, directions, baselines=BASELINES_6) ->
     """Compare the induced ranking (`result.classes`) against every baseline in
     `baselines` using Spearman's rho, Kendall's tau, and the WS coefficient.
     Skips a baseline (with a printed note) if it raises -- this is how WSM is
-    excluded from the NBA comparison in Section 5.6. `baselines` values may be
+    excluded from the NBA comparison in Section 5.7. `baselines` values may be
     either a callable `fn(X, directions)` or an already-computed score array
     (see `score_cache` below) -- the latter avoids recomputing the same
     baseline, in particular the O(N^2 K) ELECTRE III, once per value of p."""
@@ -640,10 +642,21 @@ class _RaisingPlaceholder:
 # %% [markdown]
 # ## 6. Datasets
 #
-# ### 6.1 Small benchmark matrices (Bhangale, 2004; Karsak, 2012)
+# ### 6.1 Small benchmark matrices (Bhangale, 2004; Braglia & Petroni, 1999;
+# ### Karsak, Sener & Dursun, 2012)
 #
-# Hardcoded, byte-for-byte transcriptions of Table `tab:bhangale` and Table
-# `tab:karsak` in the paper. No download needed.
+# Hardcoded, byte-for-byte transcriptions of Table `tab:bhangale`, Table
+# `tab:karsak`, and Table `tab:karsak27` in the paper. No download needed.
+#
+# **Naming note.** `KARSAK_*` below (12 robots x 5 criteria) is the matrix
+# originally misattributed to Karsak et al. (2012) in an earlier draft of this
+# paper; it is in fact the data reported in Braglia & Petroni (1999) — see the
+# Reproducibility note in Section 11 below for the full misattribution story.
+# The variable names `KARSAK_*` are kept as-is throughout this notebook to
+# avoid a large, purely cosmetic rename that touches every downstream cell;
+# only the paper's own text and figure labels were corrected. `KARSAK27_*`,
+# added below, is the true Karsak, Sener & Dursun (2012) data (27 robots x 4
+# criteria, their Table 1), used as the paper's fifth experimental dataset.
 
 # %%
 BHANGALE_LABELS = [
@@ -687,10 +700,54 @@ print("Table tab:karsak -- Karsak et al. (2012), 12 robots x 5 criteria")
 display(pd.DataFrame(KARSAK_X, index=KARSAK_LABELS, columns=KARSAK_COLUMNS))
 
 # %% [markdown]
+# ### 6.1bis The true Karsak, Sener & Dursun (2012) dataset (27 robots x 4 criteria)
+#
+# Table 1 of Karsak, Sener & Dursun (2012), attributed there to Imany &
+# Schlesinger (1989). Cost is in units of \$10,000; a lower value of
+# repeatability is better (the source paper's own convention, Section 5 of
+# the original article), so both Cost and Repeatability are minimized here.
+
+# %%
+KARSAK27_LABELS = [f"R{i}" for i in range(1, 28)]
+KARSAK27_COLUMNS = ["Cost ($10,000)", "LC (kg)", "Velocity (m/s)", "Repeatability (mm)"]
+KARSAK27_DIRECTIONS = ["min", "max", "max", "min"]  # Cost and Repeatability are minimized
+KARSAK27_X = np.array([
+    [7.20, 60.0, 1.35, 0.150],   # R1
+    [4.80, 6.0, 1.1, 0.050],    # R2
+    [5.00, 45.0, 1.27, 1.270],  # R3
+    [7.20, 1.5, 0.66, 0.025],   # R4
+    [9.60, 50.0, 0.05, 0.250],  # R5
+    [1.07, 1.0, 0.30, 0.100],   # R6
+    [1.76, 5.0, 1.00, 0.100],   # R7
+    [3.20, 15.0, 1.00, 0.100],  # R8
+    [6.72, 10.0, 1.10, 0.200],  # R9
+    [2.40, 6.0, 1.00, 0.050],   # R10
+    [2.88, 30.0, 0.90, 0.500],  # R11
+    [6.90, 13.6, 0.15, 1.000],  # R12
+    [3.20, 10.0, 1.20, 0.050],  # R13
+    [4.00, 30.0, 1.20, 0.050],  # R14
+    [3.68, 47.0, 1.00, 1.000],  # R15
+    [6.88, 80.0, 1.00, 1.000],  # R16
+    [8.00, 15.0, 2.00, 2.000],  # R17
+    [6.30, 10.0, 1.00, 0.200],  # R18
+    [0.94, 10.0, 0.30, 0.050],  # R19
+    [0.16, 1.5, 0.80, 2.000],   # R20
+    [2.81, 27.0, 1.70, 2.000],  # R21
+    [3.80, 0.9, 1.00, 0.050],   # R22
+    [1.25, 2.5, 0.50, 0.100],   # R23
+    [1.37, 2.5, 0.50, 0.100],   # R24
+    [3.63, 10.0, 1.00, 0.200],  # R25
+    [5.30, 70.0, 1.25, 1.270],  # R26
+    [4.00, 205.0, 0.75, 2.030], # R27
+], dtype=float)
+print("Table tab:karsak27 -- Karsak, Sener & Dursun (2012), 27 robots x 4 criteria")
+display(pd.DataFrame(KARSAK27_X, index=KARSAK27_LABELS, columns=KARSAK27_COLUMNS))
+
+# %% [markdown]
 # ### 6.2 QS World University Rankings ($N=690$ after filtering)
 #
 # Restricted to universities with complete values on all six official QS
-# sub-indicator scores and a numeric Overall SCORE (Section 5.5). All six
+# sub-indicator scores and a numeric Overall SCORE (Section 5.6). All six
 # criteria are maximized.
 
 # %%
@@ -718,9 +775,9 @@ assert len(QS_LABELS) == 690, "Filtering does not match the paper -- check the s
 # ### 6.3 NBA player performance
 #
 # Two views of the same source file are used in the paper: the 2021--22 season
-# restricted to players with at least 40 games played ($N=358$, Section 5.6's
+# restricted to players with at least 40 games played ($N=358$, Section 5.7's
 # main comparison), and the full multi-season panel with complete cases on the
-# five criteria ($N=12{,}844$, Section 5.6's runtime-complexity table).
+# five criteria ($N=12{,}844$, Section 5.7's runtime-complexity table).
 
 # %%
 NBA_CRITERIA_COLUMNS = ["pts", "reb", "ast", "net_rating", "ts_pct"]
@@ -868,10 +925,10 @@ fig = make_ws_saturation()
 save_fig(fig, "figure2_ws_saturation")
 
 # %% [markdown]
-# ## 9. Figure — retention-ratio sensitivity across all four datasets
+# ## 9. Figure — retention-ratio sensitivity across all five datasets
 #
 # **Produces Figure 3 in the paper** (`fig:p-sensitivity`, opening of Section 5,
-# before Section 5.1). Requires all four datasets loaded above (Section 6).
+# before Section 5.1). Requires all five datasets loaded above (Section 6).
 
 # %%
 def p_sweep(X, directions, N, p_grid=None, L=1):
@@ -887,11 +944,12 @@ def p_sweep(X, directions, N, p_grid=None, L=1):
 def make_p_sensitivity():
     datasets = [
         ("Bhangale (2004), N=7", BHANGALE_X, BHANGALE_DIRECTIONS, 7),
-        ("Karsak (2012), N=12", KARSAK_X, KARSAK_DIRECTIONS, 12),
+        ("Braglia \\& Petroni (1999), N=12", KARSAK_X, KARSAK_DIRECTIONS, 12),
+        ("Karsak et al. (2012), N=27", KARSAK27_X, KARSAK27_DIRECTIONS, 27),
         ("QS Rankings, N=690", QS_X, QS_DIRECTIONS, 690),
         ("NBA 2021--22, N=358", NBA_X, NBA_DIRECTIONS, 358),
     ]
-    fig, axes = plt.subplots(2, 2, figsize=(6.8, 5.2))
+    fig, axes = plt.subplots(2, 3, figsize=(9.8, 5.4))
     for ax, (title, X, dirs, N) in zip(axes.flat, datasets):
         rows = p_sweep(X, dirs, N)
         ps = [r[0] for r in rows]
@@ -912,6 +970,8 @@ def make_p_sensitivity():
         ax.set_xlabel("$p$", fontsize=8)
         ax.set_ylabel("$|C^*|$ (log scale)", fontsize=8)
         ax.set_xlim(0.05, 1.0)
+    for ax in axes.flat[len(datasets):]:
+        ax.axis("off")
     handles = [Line2D([0], [0], marker="o", color=BLUE, markerfacecolor=BLUE,
                        linestyle="none", markersize=5, label="stabilization"),
                Line2D([0], [0], marker="o", color=BLUE, markerfacecolor="white",
@@ -991,7 +1051,7 @@ print("Table tab:literature-validation-comparison")
 display(bhangale_comparison)
 
 # %% [markdown]
-# ## 11. Section 5.2 — Karsak (2012): illustrative example and parameter sensitivity
+# ## 11. Section 5.2 — Braglia \& Petroni (1999): illustrative example and parameter sensitivity
 #
 # **Produces:**
 # - Table `tab:illustrative-composition` — composition of $C^*$ as a function of $p$
@@ -1080,14 +1140,134 @@ print("\nTable tab:illustrative-ranks (average-rank tie convention; see note abo
 display(karsak_ranks)
 
 # %% [markdown]
-# ## 12. Section 5.3 — ELECTRE TRI-B: a sorting-based comparison
+# ## 11bis. Section 5.3 — Karsak, Sener & Dursun (2012): full 27-robot dataset
+#
+# **Produces:**
+# - Table `tab:karsak27-composition` — composition of $C^*$ as a function of $p$
+# - Table `tab:karsak27-p60` — top-ranked candidate per baseline at $p=0.60$,
+#   and its agreement with the induced ranking
+# - Table `tab:karsak27-comparison` — full agreement table across all four $p$
+# - Table `tab:karsak27-ranks` — rank position of R1, R8, R13 and R14 within
+#   each baseline's own full ranking
+#
+# **Used in the article at:** Section 5.3 ("Extended Validation: Karsak et
+# al. (2012) Full Dataset"). Karsak, Sener and Dursun (2012) report the *true*
+# 27-robot, 4-criterion dataset originally attributed to Imany and Schlesinger
+# (1989) — distinct from the 12-robot, 5-criterion matrix mislabelled
+# "Karsak (2012)" in an earlier draft of this paper and now correctly
+# attributed to Braglia and Petroni (1999) (Section 5.2 above). Karsak et al.'s
+# own fuzzy-regression ranking identifies R14 as the top candidate, a result
+# cross-validated by two independent methods on the same data (Khouja and
+# Booth's 1991 robust regression, and Karsak's 1998 two-phase DEA/fuzzy
+# procedure); TOPSIS and OCRA (Parkan and Wu 1999) independently identify R1.
+# Under the paper's own procurement-style constraint (repeatability
+# $\le 0.2$mm, cost $\le \$37{,}000$), Karsak et al.'s model instead selects
+# R13 (their own rank-2 candidate), versus R25 chosen by Imany and Schlesinger
+# (1989) under the same constraint. This gives three distinct, literature-
+# anchored reference points (R14, R1, R13) against which to check the
+# proposed method, at a size ($N=27$, $K=4$) intermediate between the two
+# small benchmark matrices above and the two large-scale datasets below.
+
+# %%
+KARSAK27_P_GRID = [0.60, 0.70, 0.80, 0.90]
+karsak27_results = {p: iqis_select(KARSAK27_X, KARSAK27_DIRECTIONS, p=p, L=1) for p in KARSAK27_P_GRID}
+
+rows = []
+for p, r in karsak27_results.items():
+    T = r.n_iterations
+    cstar = [KARSAK27_LABELS[i] for i in r.final_class_indices]
+    runner_up = [KARSAK27_LABELS[i] for i in np.flatnonzero(r.classes == T)] if T >= 2 else []
+    rows.append({"p": p, "T": T, "|C*|": len(cstar),
+                 "C* (class T+1)": ", ".join(cstar),
+                 "class T (runner-up)": ", ".join(runner_up) if runner_up else "--",
+                 "stopped_by": r.stopped_by})
+karsak27_composition = pd.DataFrame(rows).set_index("p")
+print("Table tab:karsak27-composition")
+display(karsak27_composition)
+
+sizes = karsak27_composition["|C*|"].tolist()
+print(f"\n|C*| sequence across p={KARSAK27_P_GRID}: {sizes} -- not monotone in p, "
+      f"the same qualitative pattern as the Braglia \\& Petroni illustrative example above.")
+print("R14 (the paper's literature-consensus top pick) is in C* at p in {0.60, 0.80, 0.90} "
+      "and is the runner-up (class T, one iteration from C*) at p=0.70.")
+print("R13 (the paper's own rank-2 pick, and the actual best choice under its own "
+      "procurement constraint) is in C* at every tested p.")
+
+# %% [markdown]
+# Table `tab:karsak27-p60`: at $p=0.60$ (the first grid point, where $C^*$
+# already contains both R13 and R14), each baseline's own top-ranked candidate
+# and its agreement with the induced ranking.
+
+# %%
+_karsak27_scores = score_cache(KARSAK27_X, KARSAK27_DIRECTIONS)
+r60_27 = karsak27_results[0.60]
+rows = []
+for name, score in _karsak27_scores.items():
+    top_idx = int(np.argmax(score))
+    rows.append({"Method": name, "Top-ranked candidate": KARSAK27_LABELS[top_idx],
+                 "Spearman rho": round(spearman_rho(r60_27.classes, score), 3),
+                 "Kendall tau": round(kendall_tau(r60_27.classes, score), 3),
+                 "WS": round(ws_coefficient(r60_27.classes, score), 3)})
+karsak27_p60 = pd.DataFrame(rows).set_index("Method")
+print("Table tab:karsak27-p60")
+display(karsak27_p60)
+print("\nNote: these are this notebook's own baseline implementations (equal weights, "
+      "generic thresholds), not a reproduction of Parkan \\& Wu's (1999) original "
+      "TOPSIS/OCRA study -- their top pick R1 is not guaranteed to reappear here, and "
+      "indeed does not for this notebook's TOPSIS baseline (which instead matches "
+      "Karsak et al.'s own literature-consensus top pick, R14).")
+
+# %% [markdown]
+# Table `tab:karsak27-comparison`: full agreement table (all four $p$, all six
+# baselines).
+
+# %%
+karsak27_agreement = {p: agreement_table(r, KARSAK27_X, KARSAK27_DIRECTIONS, baselines=_karsak27_scores) for p, r in karsak27_results.items()}
+karsak27_comparison = pd.concat(karsak27_agreement, names=["p", "Method"])
+print("Table tab:karsak27-comparison")
+display(karsak27_comparison)
+
+# %% [markdown]
+# Table `tab:karsak27-ranks`: rank position (1 = best of 27) of R1, R8, R13 and
+# R14 within each baseline's own parameter-independent full ranking.
+#
+# **Reproducibility note.** As on the Braglia \& Petroni matrix above, Borda's
+# rank-sum has genuine exact ties on this data too -- most notably R13 and R14
+# tie at rank-sum 36, which is why both appear at rank 1.5 in the Borda column
+# below (average-rank convention, `scipy.stats.rankdata(method="average")`,
+# the same convention used everywhere else in this notebook). This is a
+# property of the data, not a computation error -- confirmed directly below.
+
+# %%
+karsak27_candidates = ["R1", "R8", "R13", "R14"]
+tied_groups_27 = (pd.Series(-_karsak27_scores["Borda"], index=KARSAK27_LABELS)
+                   .round(6).reset_index().groupby(0)["index"].apply(list))
+print("Exact ties in the Borda rank-sum (rank-sum -> tied candidates):")
+for rank_sum, members in tied_groups_27.items():
+    if len(members) > 1:
+        print(f"  {rank_sum}: {members}")
+
+rows = []
+for cand in karsak27_candidates:
+    idx = KARSAK27_LABELS.index(cand)
+    row = {"Candidate": cand}
+    for name, score in _karsak27_scores.items():
+        rank_of_idx = float(stats.rankdata(-score, method="average")[idx])
+        row[name] = rank_of_idx
+    rows.append(row)
+karsak27_ranks = pd.DataFrame(rows).set_index("Candidate")
+print("\nTable tab:karsak27-ranks (average-rank tie convention; see note above)")
+display(karsak27_ranks)
+
+# %% [markdown]
+# ## 12. Section 5.4 — ELECTRE TRI-B: a sorting-based comparison
 #
 # **Produces:**
 # - Table `tab:electre-tri` — ELECTRE TRI-B's top category vs. the proposed
 #   method's $C^*$, at the same $p$ used for IQIS on each dataset, on both small
-#   benchmark matrices (Bhangale, Karsak)
+#   benchmark matrices (Bhangale, Braglia \& Petroni)
 #
-# **Used in the article at:** Section 5.3 ("ELECTRE TRI-B: A Sorting-Based
+# **Used in the article at:** Section 5.4 ("ELECTRE TRI-B: A Sorting-Based
 # Comparison"). ELECTRE TRI-B sorts each candidate into one of two categories
 # against a single boundary profile $B$, placed criterion-by-criterion at the
 # $(1-p)$-quantile of the benefit-oriented data -- the same retention ratio $p$
@@ -1113,15 +1293,15 @@ def electre_tri_comparison(results_by_p, X, directions, labels):
 electre_tri_bhangale = electre_tri_comparison(bhangale_results, BHANGALE_X, BHANGALE_DIRECTIONS, BHANGALE_LABELS)
 electre_tri_karsak = electre_tri_comparison(karsak_results, KARSAK_X, KARSAK_DIRECTIONS, KARSAK_LABELS)
 
-electre_tri_comparison_table = pd.concat({"Bhangale": electre_tri_bhangale, "Karsak": electre_tri_karsak},
+electre_tri_comparison_table = pd.concat({"Bhangale": electre_tri_bhangale, "Braglia & Petroni": electre_tri_karsak},
                                           names=["Dataset", "p"])
 print("Table tab:electre-tri")
 display(electre_tri_comparison_table)
 print("\nPaper values -- Bhangale: |C*|=[1,2,2,4], |TRI-B|=[2,3,4,4], Jaccard=[0.50,0.67,0.50,1.00]")
-print("Paper values -- Karsak:   |C*|=[1,3,2,4], |TRI-B|=[2,6,9,9], Jaccard=[0.50,0.50,0.22,0.44]")
+print("Paper values -- Braglia & Petroni:   |C*|=[1,3,2,4], |TRI-B|=[2,6,9,9], Jaccard=[0.50,0.50,0.22,0.44]")
 
 # %% [markdown]
-# ## 13. Section 5.4 — Rank-reversal test: perturbing the Karsak matrix
+# ## 13. Section 5.5 — Rank-reversal test: perturbing the Braglia \& Petroni matrix
 #
 # **Produces:**
 # - Table `tab:rank-reversal` — induced ranking before and after removing R2 and
@@ -1129,8 +1309,8 @@ print("Paper values -- Karsak:   |C*|=[1,3,2,4], |TRI-B|=[2,6,9,9], Jaccard=[0.5
 # - The baseline-consensus check: does R\_hybrid become the new top pick of
 #   every compensatory/outranking baseline on the perturbed matrix?
 #
-# **Used in the article at:** Section 5.4 ("Rank-Reversal Test: Perturbing the
-# Karsak Matrix"). Because the per-iteration admission threshold is recomputed
+# **Used in the article at:** Section 5.5 ("Rank-Reversal Test: Perturbing the
+# Braglia \& Petroni Matrix"). Because the per-iteration admission threshold is recomputed
 # relative to the *current* population (Remark `rem:population-change`), adding
 # or removing a candidate can in principle alter $C^*$; this section tests that
 # directly with a Triantaphyllou (2000)-style rank-reversal test adapted to
@@ -1204,7 +1384,7 @@ print(f"(of {len(RR_LABELS)} candidates)")
 display(rank_reversal_baselines)
 
 # %% [markdown]
-# ## 14. Section 5.5 — QS World University Rankings: large-scale validation
+# ## 14. Section 5.6 — QS World University Rankings: large-scale validation
 #
 # **Produces:**
 # - Table `tab:qs-composition` — composition of $C^*$ as a function of $p$
@@ -1214,7 +1394,7 @@ display(rank_reversal_baselines)
 # - The "Overall SCORE direct comparison" figures quoted in the text
 #   ($\rho=0.273\to0.693$) and the skyline size (16 of 690)
 #
-# **Used in the article at:** Section 5.5 ("Large-Scale Validation: QS World
+# **Used in the article at:** Section 5.6 ("Large-Scale Validation: QS World
 # University Rankings"). This is the first of the two large-$N$ real-world
 # datasets and the section that isolates the non-compensatory mechanism most
 # clearly (a single weak sub-indicator disqualifying an otherwise top-ranked
@@ -1251,7 +1431,7 @@ print(f"Present in C* at every tested p: {always_present}")
 # changes the top 3. University of Cambridge is read off the already-computed
 # $C^*$ set at $p=0.90$ rather than hardcoded.
 #
-# **Reproducibility note.** The article's Section 5.5 prose names "MIT, Stanford,
+# **Reproducibility note.** The article's Section 5.6 prose names "MIT, Stanford,
 # and Harvard" as the three highest-scoring universities on QS's own Overall
 # SCORE. Reading that column directly off `data/qs_university_rankings_2026.csv`
 # (printed below) instead gives **MIT, Imperial College London, Stanford** --
@@ -1306,7 +1486,7 @@ display(qs_mechanism)
 
 # %% [markdown]
 # Table `tab:qs-comparison`: full agreement table (all four $p$, all five
-# baselines). Unlike Karsak (2012), all six QS criteria are non-negative SCORE
+# baselines). Unlike the Braglia \& Petroni (1999) matrix above, all six QS criteria are non-negative SCORE
 # values, so WSM's sum-normalization succeeds here (no skipped baseline).
 
 # %%
@@ -1335,7 +1515,7 @@ print(f"\nQS classical Pareto skyline: {len(qs_skyline)} of {len(QS_LABELS)} "
       f"universities (paper: 16 of 690)")
 
 # %% [markdown]
-# ## 15. Section 5.6 — NBA player performance: large-scale validation, monotonicity
+# ## 15. Section 5.7 — NBA player performance: large-scale validation, monotonicity
 # caveat, and runtime complexity
 #
 # **Produces:**
@@ -1349,7 +1529,7 @@ print(f"\nQS classical Pareto skyline: {len(qs_skyline)} of {len(QS_LABELS)} "
 # - Table `tab:nba-complexity` and **Figure 5** (`fig:nba-complexity`) — empirical
 #   runtime on the full multi-season panel
 #
-# **Used in the article at:** Section 5.6 ("Large-Scale Validation: NBA Player
+# **Used in the article at:** Section 5.7 ("Large-Scale Validation: NBA Player
 # Performance and a Cautionary Note on Monotonicity"). This is the only section
 # where the cautionary methodological point about $|C^*|$ non-comparability
 # *across* independent runs at different $p$ is demonstrated on a fine grid, and
@@ -1549,32 +1729,50 @@ fig = make_nba_complexity_figure(nba_complexity_N, nba_complexity_time_ms)
 save_fig(fig, "figure5_nba_complexity")
 
 # %% [markdown]
-# ## 16. Section 5.7 — Cross-dataset statistical synthesis
+# ## 16. Section 5.8 — Cross-dataset statistical synthesis
 #
 # **Produces:**
-# - **Figure 6** (`fig:cross-dataset-heatmap`) — $\rho$ and WS for all sixteen
-#   (dataset, $p$) combinations and five baselines
-# - Table `tab:cross-dataset-ranks` — average rank across all 16 combinations,
-#   restricted to the four baselines available on every dataset, with a Friedman
+# - **Figure 6** (`fig:cross-dataset-heatmap`) — $\rho$ and WS for all twenty
+#   (dataset, $p$) combinations and six baselines
+# - Table `tab:cross-dataset-ranks` — average rank across all 20 combinations,
+#   restricted to the five baselines available on every dataset, with a Friedman
 #   test
-# - Table `tab:cross-dataset-wsm` — average rank across the 12 combinations where
-#   WSM is defined, all five baselines, with a Friedman test
+# - Table `tab:cross-dataset-wsm` — average rank across the combinations where
+#   WSM is defined, all six baselines, with a Friedman test
 #
-# **Used in the article at:** Section 5.7 ("Cross-Dataset Statistical Synthesis").
+# **Used in the article at:** Section 5.8 ("Cross-Dataset Statistical Synthesis").
 # Unlike `generate_figures.py`'s original authoring script, every number in this
-# section is computed live from the four `*_agreement` dictionaries built in
-# Sections 10, 11, 14, and 15 above (`bhangale_agreement`, `karsak_agreement`,
-# `qs_agreement`, `nba_agreement`) -- nothing here is hardcoded, so this section
-# is a genuine, self-contained reproduction of Table `tab:cross-dataset-ranks`
-# and Table `tab:cross-dataset-wsm`, not merely a redrawing of numbers copied
-# from the paper.
+# section is computed live from the five `*_agreement` dictionaries built in
+# Sections 10, 11, 11bis, 14, and 15 above (`bhangale_agreement`,
+# `karsak_agreement`, `karsak27_agreement`, `qs_agreement`, `nba_agreement`) --
+# nothing here is hardcoded, so this section is a genuine, self-contained
+# reproduction of Table `tab:cross-dataset-ranks` and Table
+# `tab:cross-dataset-wsm`, not merely a redrawing of numbers copied from the
+# paper. `WSM_N_BLOCKS` below (computed, not hardcoded) reports exactly how
+# many of the 20 combinations WSM is defined on.
 
 # %%
 AGREEMENT_BY_DATASET = {
     "Bhangale": bhangale_agreement,
     "Karsak": karsak_agreement,
+    "Karsak27": karsak27_agreement,
     "QS": qs_agreement,
     "NBA": nba_agreement,
+}
+
+# Human-facing display names for the (dataset, p) column labels in Figure 6 and
+# the Nemenyi CD figure below -- kept separate from the AGREEMENT_BY_DATASET /
+# dataset_p_order dict keys (which stay as their original internal code names,
+# see the Section 6.1 naming note) precisely so that the *figure* a reader sees
+# never repeats the "Karsak" misattribution corrected in the paper's text: the
+# "Karsak" key is the 12-robot Braglia & Petroni (1999) matrix, and "Karsak27"
+# is the true Karsak, Sener & Dursun (2012) 27-robot matrix.
+DATASET_DISPLAY_NAMES = {
+    "Bhangale": "Bhangale",
+    "Karsak": "Braglia\n& Petroni",
+    "Karsak27": "Karsak\net al.",
+    "QS": "QS",
+    "NBA": "NBA",
 }
 
 def build_cross_dataset_long(agreement_by_dataset):
@@ -1593,11 +1791,11 @@ def build_cross_dataset_long(agreement_by_dataset):
 
 cross_dataset_long = build_cross_dataset_long(AGREEMENT_BY_DATASET)
 print(f"Pooled {cross_dataset_long[['dataset', 'p']].drop_duplicates().shape[0]} "
-      f"(dataset, p) combinations (paper: 16).")
+      f"(dataset, p) combinations (paper: 20).")
 display(cross_dataset_long.head())
 
 # %% [markdown]
-# **Figure 6**: heatmap of $\rho$ (top) and WS (bottom) across all sixteen
+# **Figure 6**: heatmap of $\rho$ (top) and WS (bottom) across all twenty
 # combinations, columns ordered dataset-by-dataset exactly as in the paper.
 
 # %%
@@ -1606,10 +1804,11 @@ def make_cross_dataset_heatmap(long_df):
     dataset_p_order = [
         ("Bhangale", 0.50), ("Bhangale", 0.60), ("Bhangale", 0.75), ("Bhangale", 0.80),
         ("Karsak", 0.60), ("Karsak", 0.70), ("Karsak", 0.80), ("Karsak", 0.85),
+        ("Karsak27", 0.60), ("Karsak27", 0.70), ("Karsak27", 0.80), ("Karsak27", 0.90),
         ("QS", 0.30), ("QS", 0.50), ("QS", 0.70), ("QS", 0.90),
         ("NBA", 0.30), ("NBA", 0.50), ("NBA", 0.70), ("NBA", 0.90),
     ]
-    col_labels = [f"{ds}\np={p:.2f}" for ds, p in dataset_p_order]
+    col_labels = [f"{DATASET_DISPLAY_NAMES.get(ds, ds)}\np={p:.2f}" for ds, p in dataset_p_order]
 
     idx = long_df.set_index(["dataset", "p", "Method"])
     rho_mat, ws_mat = [], []
@@ -1647,7 +1846,7 @@ def make_cross_dataset_heatmap(long_df):
         cb = fig.colorbar(im, ax=ax, fraction=0.02, pad=0.01)
         cb.ax.tick_params(labelsize=6)
         ax.set_title(title, fontsize=8, loc="left")
-        for x in [3.5, 7.5, 11.5]:
+        for x in [3.5, 7.5, 11.5, 15.5]:
             ax.axvline(x, color="white", lw=1.4)
 
     ax2.set_xticks(range(len(col_labels)))
@@ -1655,7 +1854,7 @@ def make_cross_dataset_heatmap(long_df):
     fig.tight_layout(rect=[0, 0, 1, 1])
     fig.subplots_adjust(top=0.91, hspace=0.32)
     fig.text(0.5, 0.97,
-              "Agreement between the induced ranking and six baselines, all 16 (dataset, $p$) combinations",
+              "Agreement between the induced ranking and six baselines, all 20 (dataset, $p$) combinations",
               ha="center", fontsize=9)
     return fig
 
@@ -1698,13 +1897,14 @@ for metric_col, out_col in metrics:
     friedman_row[out_col] = (round(chi2, 3), pval)
 
 cross_dataset_ranks = pd.DataFrame(rows).T
-print("Table tab:cross-dataset-ranks (5 baselines incl. ELECTRE III, all 16 combinations)")
+n_blocks_5e = wide_by_metric["Spearman rho"].shape[0]
+print(f"Table tab:cross-dataset-ranks (5 baselines incl. ELECTRE III, all {n_blocks_5e} combinations)")
 display(cross_dataset_ranks)
 for out_col, (chi2, pval) in friedman_row.items():
     print(f"Friedman chi2 (df=4) on {out_col}: {chi2}  p-value: {pval:.3e}")
 
 # %% [markdown]
-# **Nemenyi post-hoc test** (Section 5.7 of the paper): the omnibus Friedman
+# **Nemenyi post-hoc test** (Section 5.8 of the paper): the omnibus Friedman
 # test above does not by itself license pairwise claims between baselines;
 # `scikit_posthocs.posthoc_nemenyi_friedman` runs the standard post-hoc test
 # recommended by Demšar (2006) directly on the same block-design `wide` table
@@ -1717,8 +1917,13 @@ nemenyi_5e = {metric_col: sp.posthoc_nemenyi_friedman(wide_by_metric[metric_col]
               for metric_col, _ in metrics}
 for metric_col, _ in metrics:
     nemenyi_5e[metric_col].index = nemenyi_5e[metric_col].columns = BASELINES_5E
-print("Nemenyi pairwise adjusted p-values, Spearman rho (5 baselines, 16 combinations):")
+print(f"Nemenyi pairwise adjusted p-values, Spearman rho (5 baselines, {n_blocks_5e} combinations):")
 display(nemenyi_5e["Spearman rho"].round(4))
+print(f"\nNemenyi pairwise adjusted p-values, Kendall tau (5 baselines, {n_blocks_5e} combinations):")
+display(nemenyi_5e["Kendall tau"].round(4))
+print("\nVIKOR vs TOPSIS:", round(float(nemenyi_5e['Spearman rho'].loc['VIKOR', 'TOPSIS']), 4),
+      "(rho),", round(float(nemenyi_5e['Kendall tau'].loc['VIKOR', 'TOPSIS']), 4),
+      "(tau) -- closest pair to significance in the no-WSM comparison.")
 
 # %%
 BASELINES_6E = ["TOPSIS", "VIKOR", "WSM", "PROMETHEE II", "Borda", "ELECTRE III"]
@@ -1735,7 +1940,7 @@ for metric_col, out_col in metrics:
     friedman_row_wsm[out_col] = (round(chi2, 3), pval)
 
 cross_dataset_wsm = pd.DataFrame(rows).T
-print(f"Table tab:cross-dataset-wsm (6 baselines incl. WSM and ELECTRE III, {n_blocks_wsm} combinations where WSM is defined; paper: 12)")
+print(f"Table tab:cross-dataset-wsm (6 baselines incl. WSM and ELECTRE III, {n_blocks_wsm} combinations where WSM is defined; paper: 16)")
 display(cross_dataset_wsm)
 for out_col, (chi2, pval) in friedman_row_wsm.items():
     print(f"Friedman chi2 (df=5) on {out_col}: {chi2}  p-value: {pval:.3e}")
@@ -1745,14 +1950,18 @@ nemenyi_6e = {metric_col: sp.posthoc_nemenyi_friedman(wide_by_metric_6e[metric_c
               for metric_col, _ in metrics}
 for metric_col, _ in metrics:
     nemenyi_6e[metric_col].index = nemenyi_6e[metric_col].columns = BASELINES_6E
-print("Nemenyi pairwise adjusted p-values, Spearman rho (6 baselines, 12 combinations):")
+print(f"Nemenyi pairwise adjusted p-values, Spearman rho (6 baselines, {n_blocks_wsm} combinations):")
 display(nemenyi_6e["Spearman rho"].round(4))
+print(f"\nNemenyi pairwise adjusted p-values, Kendall tau (6 baselines, {n_blocks_wsm} combinations):")
+display(nemenyi_6e["Kendall tau"].round(4))
+print("\nWSM vs VIKOR (tau):", nemenyi_6e["Kendall tau"].loc["WSM", "VIKOR"],
+      " WSM vs Borda (tau):", nemenyi_6e["Kendall tau"].loc["WSM", "Borda"])
 print("\nWSM vs VIKOR:", nemenyi_6e["Spearman rho"].loc["WSM", "VIKOR"],
       " WSM vs Borda:", nemenyi_6e["Spearman rho"].loc["WSM", "Borda"],
       " (paper's headline pairwise-significant results, Table tab:cross-dataset-wsm discussion)")
 
 # %% [markdown]
-# **Figure 7** (`fig8_nemenyi_cd.pdf` in the paper -- see Section 5.7): critical-
+# **Figure 7** (`fig8_nemenyi_cd.pdf` in the paper -- see Section 5.8): critical-
 # difference diagrams following Demšar (2006), one panel per baseline set above.
 # A thick bar connects baselines whose average ranks differ by less than the
 # Nemenyi critical difference $CD=q_\alpha\sqrt{k(k+1)/(6N)}$; baselines not
@@ -1773,13 +1982,16 @@ def _maximal_cliques(ranks, cd):
             raw.append((i, j))
     return sorted(set(a for a in raw if not any(a != b and b[0] <= a[0] and a[1] <= b[1] for b in raw)))
 
-def make_nemenyi_cd_figure(rank_dict_5e, rank_dict_6e, N5e=16, N6e=12):
+def make_nemenyi_cd_figure(rank_dict_5e, rank_dict_6e, N5e, N6e):
+    # N5e/N6e are required (not defaulted) precisely so this figure cannot
+    # silently drift out of sync with the actual block counts computed above
+    # if the number of datasets or the WSM-defined subset ever changes again.
     # Standard Nemenyi q_alpha (alpha=0.05) studentized-range critical values.
     Q_ALPHA = {2: 1.960, 3: 2.343, 4: 2.569, 5: 2.728, 6: 2.850}
     fig, axes = plt.subplots(2, 1, figsize=(7.2, 7.6))
     for ax, rank_dict, N, title in [
-        (axes[0], rank_dict_5e, N5e, "5 baselines incl. ELECTRE III, 16 (dataset, $p$) combinations"),
-        (axes[1], rank_dict_6e, N6e, "6 baselines incl. WSM + ELECTRE III, 12 combinations"),
+        (axes[0], rank_dict_5e, N5e, f"5 baselines incl. ELECTRE III, {N5e} (dataset, $p$) combinations"),
+        (axes[1], rank_dict_6e, N6e, f"6 baselines incl. WSM + ELECTRE III, {N6e} combinations"),
     ]:
         k = len(rank_dict)
         cd = _nemenyi_cd(k, N, Q_ALPHA[k])
@@ -1813,11 +2025,11 @@ def make_nemenyi_cd_figure(rank_dict_5e, rank_dict_6e, N5e=16, N6e=12):
 
 rank_dict_5e = cross_dataset_ranks["Avg. rank (rho)"].to_dict()
 rank_dict_6e = cross_dataset_wsm["Avg. rank (rho)"].to_dict()
-fig = make_nemenyi_cd_figure(rank_dict_5e, rank_dict_6e)
+fig = make_nemenyi_cd_figure(rank_dict_5e, rank_dict_6e, N5e=n_blocks_5e, N6e=n_blocks_wsm)
 save_fig(fig, "figure8_nemenyi_cd")
 
 # %% [markdown]
-# ## 17. Section 5.8 — Synthetic robustness study: scaling across $N$, $K$, and criterion correlation
+# ## 17. Section 5.9 — Synthetic robustness study: scaling across $N$, $K$, and criterion correlation
 #
 # **Produces:**
 # - `monte_carlo_df` — all 1,440 synthetic-run records ($N$, $K$, $\rho$, trial,
@@ -1828,7 +2040,7 @@ save_fig(fig, "figure8_nemenyi_cd")
 #   selectivity $|C^*|/N$ vs inter-criterion correlation $\rho$, one line per $K$
 # - The threshold-violation "degenerate mode" finding at $\rho=0$, $K=12$
 #
-# **Used in the article at:** Section 5.8 ("Synthetic Robustness Study: Scaling
+# **Used in the article at:** Section 5.9 ("Synthetic Robustness Study: Scaling
 # Across $N$, $K$, and Criterion Correlation"). The four real datasets above fix
 # $N$ and $K$ at whatever values the underlying data happen to provide, and
 # their criteria's correlation structure is whatever it is; this section
@@ -1992,12 +2204,12 @@ print("(figure7_monte_carlo is generated and saved at the end of Section 18 belo
 print(" once the p=0.75 comparison sweep needed for panel (d) is available)")
 
 # %% [markdown]
-# ## 18. Section 5.8 — Validating the degeneracy-avoiding retention ratio
+# ## 18. Section 5.9 — Validating the degeneracy-avoiding retention ratio
 #
 # **Produces:** Table `tab:degenerate-fix` (p=0.50 vs p=0.75 comparison) and the
 # L-sensitivity check cited alongside it.
 #
-# **Used in the article at:** Section 5.8, paragraph "Why the first round
+# **Used in the article at:** Section 5.9, paragraph "Why the first round
 # collapses, and how to choose p to avoid it" and Table `tab:degenerate-fix`.
 # Re-runs the identical 1,440-configuration sweep above (same master seed
 # 12345, same generation order as Section 17) at p=0.75 instead of p=0.5,

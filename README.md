@@ -4,7 +4,7 @@ This repository is the Code Availability companion to the paper (submitted to *4
 
 > [Author name], "IQIS: An Iterative, Non-Compensatory, Rank-Based Multicriteria Selection Method," 4OR (under review), 2026.
 
-It reproduces **every table and every figure** in the paper's Results and Discussion section (Section 5) — including the ELECTRE III / ELECTRE TRI-B comparison, the rank-reversal test, the cross-dataset Nemenyi post-hoc analysis, and the synthetic (Monte Carlo) robustness study added in this revision — plus the two illustrative figures used earlier in the paper (Sections 3.4 and 3.7), from a single, self-contained Jupyter notebook.
+It reproduces **every table and every figure** in the paper's Results and Discussion section (Section 5) — including the full 27-robot Karsak et al. (2012) extended-validation dataset, the ELECTRE III / ELECTRE TRI-B comparison, the rank-reversal test, the cross-dataset Nemenyi post-hoc analysis, and the synthetic (Monte Carlo) robustness study — plus the two illustrative figures used earlier in the paper (Sections 3.4 and 3.7), from a single, self-contained Jupyter notebook.
 
 ## Contents
 
@@ -31,7 +31,7 @@ computed inside `reproducibility.ipynb`, in the order they appear in the paper.
    pip install -r requirements.txt
    ```
 
-2. Download the two public datasets used in Sections 5.5 and 5.6 and place them,
+2. Download the two public datasets used in Sections 5.6 and 5.7 and place them,
    unmodified, in `data/`:
 
    | File | Source |
@@ -39,9 +39,10 @@ computed inside `reproducibility.ipynb`, in the order they appear in the paper.
    | `data/qs_university_rankings_2026.csv` | [QS World University Rankings 2026 (Kaggle)](https://www.kaggle.com/datasets/dhrubangtalukdar/qs-world-university-rankings-2026-top-1500) |
    | `data/nba_players_1996_2022.csv` | [NBA Players dataset, 1996–2022 (Kaggle)](https://www.kaggle.com/datasets/justinas/nba-players-data) |
 
-   The two small benchmark matrices used in Sections 5.1 and 5.2 (Bhangale et
-   al., 2004; Karsak et al., 2012) need no download — they are transcribed
-   directly from the original publications inside the notebook.
+   The three small/intermediate benchmark matrices used in Sections 5.1, 5.2,
+   and 5.3 (Bhangale et al., 2004; Braglia \& Petroni, 1999; Karsak, Sener \&
+   Dursun, 2012) need no download — they are transcribed directly from the
+   original publications inside the notebook.
 
 3. Open `reproducibility.ipynb` and run every cell from top to bottom, in order.
    Later cells depend on variables defined in earlier ones; there are no
@@ -62,19 +63,20 @@ read section by section alongside the paper.
 | Notebook section | Produces |
 |---|---|
 | 1–5. Setup, imports, core method, metrics, baselines | definitions only |
-| 6. Datasets | Table `tab:bhangale`, Table `tab:karsak`; loads the QS/NBA CSVs |
+| 6. Datasets | Table `tab:bhangale`, Table `tab:karsak`, Table `tab:karsak27`; loads the QS/NBA CSVs |
 | 7. Figure — method schematic | **Figure 1** (Section 3.4) |
 | 8. Figure — WS-coefficient saturation | **Figure 2** (Section 3.7) |
-| 9. Figure — retention-ratio sensitivity | **Figure 3** (opening of Section 5) |
+| 9. Figure — retention-ratio sensitivity | **Figure 3** (opening of Section 5, all five datasets) |
 | 10. Section 5.1 — Bhangale (2004) | Tables `tab:literature-validation-{composition,p50,comparison}` |
-| 11. Section 5.2 — Karsak (2012) | Tables `tab:illustrative-{composition,comparison,ranks}` |
-| 12. Section 5.3 — ELECTRE TRI-B sorting comparison | Table `tab:electre-tri` |
-| 13. Section 5.4 — Rank-reversal test | Table `tab:rank-reversal` |
-| 14. Section 5.5 — QS World University Rankings | Tables `tab:qs-{composition,mechanism,comparison}` |
-| 15. Section 5.6 — NBA player performance | Tables `tab:nba-{composition,comparison,complexity}`, **Figures 4 and 5** |
-| 16. Section 5.7 — Cross-dataset synthesis | Tables `tab:cross-dataset-{ranks,wsm}`, **Figure 6**, Nemenyi post-hoc test, **Figure 7** (critical-difference diagrams) |
-| 17. Section 5.8 — Synthetic robustness study (Monte Carlo) | **Figure 8** (`figure7_monte_carlo` on disk — see the note on figure numbering below) |
-| 18. Section 5.8 — Validating the degeneracy-avoiding retention ratio | Table `tab:degenerate-fix` (p=0.50 vs p=0.75 comparison, L-sensitivity check) |
+| 11. Section 5.2 — Braglia \& Petroni (1999) | Tables `tab:illustrative-{composition,comparison,ranks}` |
+| 11bis. Section 5.3 — Karsak, Sener \& Dursun (2012), full 27-robot dataset | Tables `tab:karsak27-{composition,p60,comparison,ranks}` |
+| 12. Section 5.4 — ELECTRE TRI-B sorting comparison | Table `tab:electre-tri` |
+| 13. Section 5.5 — Rank-reversal test | Table `tab:rank-reversal` |
+| 14. Section 5.6 — QS World University Rankings | Tables `tab:qs-{composition,mechanism,comparison}` |
+| 15. Section 5.7 — NBA player performance | Tables `tab:nba-{composition,comparison,complexity}`, **Figures 4 and 5** |
+| 16. Section 5.8 — Cross-dataset synthesis | Tables `tab:cross-dataset-{ranks,wsm}`, **Figure 6**, Nemenyi post-hoc test, **Figure 7** (critical-difference diagrams) |
+| 17. Section 5.9 — Synthetic robustness study (Monte Carlo) | **Figure 8** (`figure7_monte_carlo` on disk — see the note on figure numbering below) |
+| 18. Section 5.9 — Validating the degeneracy-avoiding retention ratio | Table `tab:degenerate-fix` (p=0.50 vs p=0.75 comparison, L-sensitivity check) |
 
 Figure numbers follow the compiled paper's reading order, not the order the
 notebook computes them in (Figure 2, the WS-saturation plot, is produced in
@@ -88,11 +90,12 @@ number are simply out of step by one and this is not a bug.
 
 Section 16 (cross-dataset synthesis) does not hardcode any of the pooled
 agreement values: it reuses the `*_agreement` tables built live in Sections
-10, 11, 14, and 15, so Figure 6, the Nemenyi post-hoc test, Figure 7, and
-Tables `tab:cross-dataset-ranks` / `tab:cross-dataset-wsm` are a genuine
-end-to-end recomputation, not a redrawing of numbers copied from the paper.
-Section 17's 1,440-run synthetic sweep is likewise generated live (seeded, so
-it is exactly reproducible run to run) rather than replayed from a cached CSV.
+10, 11, 11bis, 14, and 15 (all five datasets), so Figure 6, the Nemenyi
+post-hoc test, Figure 7, and Tables `tab:cross-dataset-ranks` /
+`tab:cross-dataset-wsm` are a genuine end-to-end recomputation, not a
+redrawing of numbers copied from the paper. Section 17's 1,440-run synthetic
+sweep is likewise generated live (seeded, so it is exactly reproducible run
+to run) rather than replayed from a cached CSV.
 
 ## Reproducibility notes
 
@@ -107,7 +110,7 @@ text reads the way it does and as a check for anyone re-verifying the dataset:
   A's Spearman ρ ≈ 0.07; the notebook computes ρ ≈ 0.09 with the same fixed
   seed and procedure used to generate the figure.
 - **Section 11 (Table `tab:illustrative-ranks`).** Borda's total rank-sum on the
-  Karsak matrix has two exact ties (R2/R12 and R3/R11). The notebook reports
+  Braglia \& Petroni matrix has two exact ties (R2/R12 and R3/R11). The notebook reports
   these as fractional (average) ranks rather than silently reproducing a
   particular whole-number tie-break.
 - **Section 14 (Table `tab:qs-mechanism`), resolved.** An earlier draft named
@@ -130,6 +133,13 @@ numbers and names in the manuscript prose.
 Relative to the version of this notebook accompanying the first submission,
 this release adds:
 
+- The **full 27-robot, 4-criterion Karsak, Sener \& Dursun (2012) dataset**
+  (Section 11bis, Tables `tab:karsak27-{composition,p60,comparison,ranks}`) as
+  a fifth, literature-grounded benchmark of intermediate size, distinct from
+  the 12-robot matrix used in Section 11 (correctly attributed to Braglia \&
+  Petroni, 1999). This dataset is also pooled into the Section 16
+  cross-dataset synthesis (Figures 6 and 7, Tables `tab:cross-dataset-ranks` /
+  `tab:cross-dataset-wsm`) alongside the other four.
 - **ELECTRE III** as a sixth ranking baseline throughout every agreement
   table (`BASELINES_6`), and **ELECTRE TRI-B** as a sorting-based comparison
   (Section 12, Table `tab:electre-tri`) — both via
@@ -138,7 +148,7 @@ this release adds:
   each criterion's range) documented in the docstrings of
   `electre_iii_score` and `electre_tri_b_good_set`.
 - A **rank-reversal test** (Section 13, Table `tab:rank-reversal`): removing
-  robots R2 and R12 from the Karsak matrix, replacing them with their
+  robots R2 and R12 from the Braglia \& Petroni matrix, replacing them with their
   elementwise-average hybrid R\_hybrid, and rerunning the method and all six
   baselines on the perturbed, 11-candidate matrix.
 - A **Nemenyi post-hoc test** and critical-difference diagrams (Section 16,
@@ -161,6 +171,9 @@ the DOI/venue is finalized) and, where applicable, the third-party datasets:
 - Bhangale, P. P., Agrawal, V. P., & Saha, S. K. (2004). Attribute based
   specification, comparison and selection of a robot. *Mechanism and Machine
   Theory*, 39(12), 1345–1366.
+- Braglia, M., & Petroni, A. (1999). Evaluating and selecting investments in
+  industrial robots. *International Journal of Production Research*, 37(18),
+  4157–4178.
 - Karsak, E. E., Sener, Z., & Dursun, M. (2012). Robot selection using a fuzzy
   regression-based decision making approach. *International Journal of
   Production Research*, 50(23), 6826–6834.
